@@ -11,14 +11,11 @@ function loadChatHistory() {
   }
 }
 
-function saveChatHistory() {
+function saveChatHistory(conversationHistory) {
   fs.writeFileSync(
     HISTORY_FILE,
     JSON.stringify(conversationHistory, null, 2)
   );
 }
 
-export {
-  loadChatHistory,
-  saveChatHistory
-};
+export { loadChatHistory, saveChatHistory };
