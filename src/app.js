@@ -1,18 +1,12 @@
-import 'dotenv/config';
-import readline from 'readline';
-import { GoogleGenAI } from '@google/genai';
-import fs from "fs";
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+import readline from "readline";
+import { getGeminiResponse } from "./services/geminiService.js";
+import { loadChatHistory, saveChatHistory } from "./chat/conversationManager.js";
+import buildPrompt from "./prompts/systemPrompt.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-
-const HISTORY_FILE = "./data/chat-history.json";
 
 const conversationHistory = loadChatHistory();
 
@@ -21,22 +15,6 @@ console.log(" AI Academic Advisor Chatbot");
 console.log("==============================");
 console.log("Type your question below.");
 console.log("Type 'exit' to quit.\n");
-
-function loadChatHistory() {
-  try {
-    const data = fs.readFileSync(HISTORY_FILE, "utf8");
-    return JSON.parse(data);
-  } catch (error) {
-    return [];
-  }
-}
-
-function saveChatHistory() {
-  fs.writeFileSync(
-    HISTORY_FILE,
-    JSON.stringify(conversationHistory, null, 2)
-  );
-}
 
 function askQuestion() {
   rl.question("You: ", async (userInput) => {
@@ -51,38 +29,29 @@ function askQuestion() {
       text: userInput,
     });
 
-    saveChatHistory();
+    saveChatHistory(conversationHistory);
 
     const historyText = conversationHistory
       .map((message) => `${message.role}: ${message.text}`)
       .join("\n");
 
+    const prompt = buildPrompt(historyText);
+
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `
-You are an UTAR Academic Advisor.
-Answer student academic questions clearly and carefully.
-Keep your answer around 3 to 5 bullet points.
-If the answer requires official confirmation, remind the student to check with the faculty or academic advisor.
+      const aiResponse = await getGeminiResponse(prompt);
 
-Conversation history:
-${historyText}
-        `,
-      });
-
-      console.log("\nAI:", response.text, "\n");
+      console.log("\nAI:", aiResponse, "\n");
 
       conversationHistory.push({
         role: "AI",
-        text: response.text,
+        text: aiResponse,
       });
 
-      saveChatHistory();
-
-      if (conversationHistory.length > 10) {
+    while (conversationHistory.length > 10) {
         conversationHistory.shift();
-      }
+    }
+
+      saveChatHistory(conversationHistory);
     } catch (error) {
       console.log("Error:", error.message);
     }
