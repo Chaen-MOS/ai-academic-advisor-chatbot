@@ -11,6 +11,8 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
+const conversationHistory = [];
+
 console.log("==============================");
 console.log(" AI Academic Advisor Chatbot");
 console.log("==============================");
@@ -25,20 +27,39 @@ function askQuestion() {
       return;
     }
 
+    conversationHistory.push({
+      role: "User",
+      text: userInput,
+    });
+
+    const historyText = conversationHistory
+      .map((message) => `${message.role}: ${message.text}`)
+      .join("\n");
+
     try {
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: `
-You are an AI Academic Advisor Chatbot.
+You are an UTAR Academic Advisor.
 Answer student academic questions clearly and carefully.
+Keep your answer around 3 to 5 bullet points.
 If the answer requires official confirmation, remind the student to check with the faculty or academic advisor.
 
-Student question:
-${userInput}
+Conversation history:
+${historyText}
         `,
       });
 
       console.log("\nAI:", response.text, "\n");
+
+      conversationHistory.push({
+        role: "AI",
+        text: response.text,
+      });
+
+      if (conversationHistory.length > 10) {
+        conversationHistory.shift();
+      }
     } catch (error) {
       console.log("Error:", error.message);
     }
