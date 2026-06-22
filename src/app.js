@@ -1,14 +1,10 @@
 import readline from "readline";
-import { getGeminiResponse } from "./services/geminiService.js";
-import { loadChatHistory, saveChatHistory } from "./chat/conversationManager.js";
-import buildPrompt from "./prompts/systemPrompt.js";
+import { processUserMessage } from "./services/chatService.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-
-const conversationHistory = loadChatHistory();
 
 console.log("==============================");
 console.log(" AI Academic Advisor Chatbot");
@@ -24,34 +20,9 @@ function askQuestion() {
       return;
     }
 
-    conversationHistory.push({
-      role: "User",
-      text: userInput,
-    });
-
-    saveChatHistory(conversationHistory);
-
-    const historyText = conversationHistory
-      .map((message) => `${message.role}: ${message.text}`)
-      .join("\n");
-
-    const prompt = buildPrompt(historyText);
-
     try {
-      const aiResponse = await getGeminiResponse(prompt);
-
+      const aiResponse = await processUserMessage(userInput);
       console.log("\nAI:", aiResponse, "\n");
-
-      conversationHistory.push({
-        role: "AI",
-        text: aiResponse,
-      });
-
-    while (conversationHistory.length > 10) {
-        conversationHistory.shift();
-    }
-
-      saveChatHistory(conversationHistory);
     } catch (error) {
       console.log("Error:", error.message);
     }
