@@ -1,5 +1,6 @@
 import readline from "readline";
 import { processUserMessage } from "./services/chatService.js";
+import { loadPdf } from "./rag/pdfLoader.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
