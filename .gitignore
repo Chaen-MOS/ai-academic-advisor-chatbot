@@ -2,4 +2,3 @@ node_modules/
 .env
 data/chat-history.json
 data/documents/
-data/knowledgeBase.json
