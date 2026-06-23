@@ -1,7 +1,5 @@
 function normalizeText(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ");
+  return text.toLowerCase().replace(/[^\w\s]/g, " ");
 }
 
 function extractKeywords(question) {
@@ -17,9 +15,8 @@ function extractKeywords(question) {
     .filter((word) => !stopWords.includes(word));
 }
 
-function scoreChunk(chunk, keywords) {
-  const normalizedChunk = normalizeText(chunk);
-
+function scoreChunk(chunkText, keywords) {
+  const normalizedChunk = normalizeText(chunkText);
   let score = 0;
 
   for (const keyword of keywords) {
@@ -31,18 +28,19 @@ function scoreChunk(chunk, keywords) {
   return score;
 }
 
-function retrieveRelevantChunks(question, chunks, topK = 3) {
+function retrieveRelevantChunks(question, knowledgeBase, topK = 3) {
   const keywords = extractKeywords(question);
 
-  return chunks
-    .map((chunk) => ({
-      chunk,
-      score: scoreChunk(chunk, keywords),
+  return knowledgeBase
+    .map((item) => ({
+      source: item.source,
+      chunkId: item.chunkId,
+      text: item.text,
+      score: scoreChunk(item.text, keywords),
     }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, topK)
-    .map((item) => item.chunk);
+    .slice(0, topK);
 }
 
 export { retrieveRelevantChunks };
