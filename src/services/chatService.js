@@ -1,6 +1,7 @@
 import { getGeminiResponse } from "./geminiService.js";
 import { loadChatHistory, saveChatHistory } from "../chat/conversationManager.js";
 import buildPrompt from "../prompts/systemPrompt.js";
+import { getRelevantContext } from "./ragService.js";
 
 const conversationHistory = loadChatHistory();
 
@@ -25,7 +26,8 @@ async function processUserMessage(userInput) {
   saveChatHistory(conversationHistory);
 
   const historyText = buildHistoryText();
-  const prompt = buildPrompt(historyText);
+  const contextText = getRelevantContext(userInput);
+  const prompt = buildPrompt(historyText, contextText);
 
   const aiResponse = await getGeminiResponse(prompt);
 
