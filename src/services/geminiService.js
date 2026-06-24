@@ -6,12 +6,39 @@ const ai = new GoogleGenAI({
 });
 
 async function getGeminiResponse(prompt) {
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: prompt,
-  });
+  for (let attempt = 1; attempt <= 3; attempt++) {
 
-  return response.text;
+    try {
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+      });
+
+      return response.text;
+
+    } catch (error) {
+
+      if (error.status === 503) {
+
+        console.log(
+          `Gemini busy. Retry ${attempt}/3...`
+        );
+
+        await new Promise(resolve =>
+          setTimeout(resolve, 3000)
+        );
+
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error(
+    "Gemini unavailable after retries."
+  );
 }
 
 export { getGeminiResponse };
