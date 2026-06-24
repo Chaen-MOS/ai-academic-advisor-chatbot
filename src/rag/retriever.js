@@ -1,3 +1,5 @@
+import { generateEmbedding } from "../services/embeddingService.js";
+
 function normalizeText(text) {
   return text.toLowerCase().replace(/[^\w\s]/g, " ");
 }
@@ -28,19 +30,25 @@ function scoreChunk(chunkText, keywords) {
   return score;
 }
 
-function retrieveRelevantChunks(question, knowledgeBase, topK = 3) {
-  const keywords = extractKeywords(question);
+function cosineSimilarity(vecA, vecB) {
+  const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+
+  const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+  const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+
+  if (magnitudeA === 0 || magnitudeB === 0) return 0;
+
+  return dotProduct / (magnitudeA * magnitudeB);
+}
+
+export async function retrieveRelevantChunks(question, knowledgeBase, topK = 5) {
+  const questionEmbedding = await generateEmbedding(question);
 
   return knowledgeBase
-    .map((item) => ({
-      source: item.source,
-      chunkId: item.chunkId,
-      text: item.text,
-      score: scoreChunk(item.text, keywords),
+    .map((chunk) => ({
+      ...chunk,
+      score: cosineSimilarity(questionEmbedding, chunk.embedding),
     }))
-    .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
 }
-
-export { retrieveRelevantChunks };
