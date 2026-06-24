@@ -13,14 +13,14 @@ function loadKnowledgeBase() {
   }
 }
 
-function getRelevantContext(question) {
+async function getRelevantContext(question) {
   const knowledgeBase = loadKnowledgeBase();
 
-  const relevantChunks = retrieveRelevantChunks(
+  const relevantChunks = await retrieveRelevantChunks(
     question,
     knowledgeBase,
     3
-  );
+    );
 
   if (relevantChunks.length === 0) {
     return "";

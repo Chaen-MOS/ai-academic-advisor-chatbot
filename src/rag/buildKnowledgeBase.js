@@ -1,10 +1,16 @@
+import "dotenv/config";
 import fs from "fs";
 import path from "path";
 import { loadPdf } from "./pdfLoader.js";
 import { chunkText } from "./chunker.js";
+import { generateEmbedding } from "../services/embeddingService.js";
 
 const DOCUMENTS_DIR = "./data/documents";
 const OUTPUT_FILE = "./data/knowledgeBase.json";
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 async function buildKnowledgeBase() {
   const files = fs
@@ -21,19 +27,28 @@ async function buildKnowledgeBase() {
     const text = await loadPdf(filePath);
     const chunks = chunkText(text);
 
-    chunks.forEach((chunk, index) => {
-      knowledgeBase.push({
-        source: file,
-        chunkId: index + 1,
-        text: chunk,
-      });
-    });
-  }
+        for (const [index, chunk] of chunks.entries()) {
+            console.log(
+                `Embedding: ${file} | Chunk ${index + 1}/${chunks.length}`
+            );
 
-  fs.writeFileSync(
-    OUTPUT_FILE,
-    JSON.stringify(knowledgeBase, null, 2)
-  );
+            const embedding = await generateEmbedding(chunk);
+
+            knowledgeBase.push({
+                source: file,
+                chunkId: index + 1,
+                text: chunk,
+                embedding,
+            });
+
+            fs.writeFileSync(
+                OUTPUT_FILE,
+                JSON.stringify(knowledgeBase, null, 2)
+            );
+
+            await sleep(800);
+            }
+  }
 
   console.log(`Knowledge base created: ${OUTPUT_FILE}`);
   console.log(`Total chunks: ${knowledgeBase.length}`);

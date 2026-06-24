@@ -26,7 +26,7 @@ async function processUserMessage(userInput) {
   saveChatHistory(conversationHistory);
 
   const historyText = buildHistoryText();
-  const contextText = getRelevantContext(userInput);
+  const contextText = await getRelevantContext(userInput);
   const prompt = buildPrompt(historyText, contextText);
 
   const aiResponse = await getGeminiResponse(prompt);
