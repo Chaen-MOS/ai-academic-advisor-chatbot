@@ -2,24 +2,30 @@ import { processUserMessage } from "../services/chatService.js";
 
 async function handleChat(req, res) {
   try {
-    const { studentId, message } = req.body;
+    const { message } = req.body;
+    const userId = req.user.id;
 
     if (!message) {
       return res.status(400).json({
         error: "Message is required",
+        code: "MESSAGE_REQUIRED",
       });
     }
 
-    const answer = await processUserMessage(message, studentId);
+    const answer = await processUserMessage(
+      message.trim(),
+      userId
+    );
 
-    res.json({
+    return res.json({
       answer,
     });
   } catch (error) {
-    console.error("Chat API Error:", error.message);
+    console.error("Chat API Error:", error);
 
-    res.status(500).json({
-      error: "Failed to process chat message",
+    return res.status(500).json({
+      error: "Failed to process chat message.",
+      code: "CHAT_PROCESSING_FAILED",
     });
   }
 }
