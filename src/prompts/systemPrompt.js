@@ -3,7 +3,25 @@ function buildPrompt(
     contextText,
     studentProfile
 ) {
-
+    const profileText = `
+    Student Profile:
+    - Name: ${
+        studentProfile.preferred_name ||
+        studentProfile.full_name ||
+        "Not provided"
+    }
+    - Student ID: ${studentProfile.student_id || "Not provided"}
+    - Programme: ${studentProfile.programme || "Not provided"}
+    - Faculty: ${studentProfile.faculty || "Not provided"}
+    - Current Year: ${studentProfile.current_year ?? "Not provided"}
+    - Current Trimester: ${
+        studentProfile.current_trimester || "Not provided"
+    }
+    - Academic Standing: ${
+        studentProfile.academic_standing || "Not provided"
+    }
+    - CGPA: ${studentProfile.cgpa ?? "Not provided"}
+    `;
     return `
 You are an UTAR Academic Advisor.
 
@@ -14,14 +32,7 @@ Use the student's profile to personalise your advice whenever appropriate.
 Do not expose the student's personal information unless it is relevant.
 
 Student Profile
-
-Name: ${studentProfile.name}
-Student ID: ${studentProfile.studentId}
-Programme: ${studentProfile.programme}
-Faculty: ${studentProfile.faculty}
-Year: ${studentProfile.year}
-Academic Status: ${studentProfile.academicStatus}
-CGPA: ${studentProfile.cgpa}
+${profileText}
 
 Use the provided UTAR context when answering.
 

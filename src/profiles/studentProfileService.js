@@ -1,18 +1,40 @@
-const fakeDatabase = {
-  "2201234": {
-    studentId: "2201234",
-    name: "Mirah",
-    programme: "Bachelor of Software Engineering",
-    faculty: "LKC FES",
-    year: 3,
-    trimesterType: "Long",
-    academicStatus: "Probation",
-    cgpa: 2.78,
-  },
-};
+import {
+  createStudentProfile,
+  findStudentProfileByUserId,
+  updateStudentProfile,
+} from "./studentProfileRepository.js";
 
-function getStudentProfile(studentId) {
-  return fakeDatabase[studentId];
+async function getStudentProfile(userId) {
+  return findStudentProfileByUserId(userId);
 }
 
-export { getStudentProfile };
+async function getOrCreateStudentProfile(
+  userId,
+  initialData = {}
+) {
+  const existingProfile =
+    await findStudentProfileByUserId(userId);
+
+  if (existingProfile) {
+    return existingProfile;
+  }
+
+  return createStudentProfile(userId, initialData);
+}
+
+async function saveStudentProfile(userId, profileData) {
+  const existingProfile =
+    await findStudentProfileByUserId(userId);
+
+  if (!existingProfile) {
+    return createStudentProfile(userId, profileData);
+  }
+
+  return updateStudentProfile(userId, profileData);
+}
+
+export {
+  getStudentProfile,
+  getOrCreateStudentProfile,
+  saveStudentProfile,
+};

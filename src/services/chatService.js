@@ -1,12 +1,13 @@
 import { getGeminiResponse } from "./geminiService.js";
-import { loadChatHistory, saveChatHistory } from "../chat/conversationManager.js";
+import {
+  loadChatHistory,
+  saveChatHistory,
+} from "../chat/conversationManager.js";
 import buildPrompt from "../prompts/systemPrompt.js";
 import { getRelevantContext } from "./ragService.js";
 import { getStudentProfile } from "../profiles/studentProfileService.js";
 
 const conversationHistory = loadChatHistory();
-const studentId = "2201234";
-const studentProfile = getStudentProfile(studentId);
 
 function buildHistoryText() {
   return conversationHistory
@@ -20,7 +21,29 @@ function trimConversationHistory() {
   }
 }
 
-async function processUserMessage(userInput) {
+async function processUserMessage(
+  userInput,
+  authenticatedUserId,
+) {
+  if (!authenticatedUserId) {
+    throw new Error("Authenticated user ID is required.");
+  }
+
+  const storedProfile =
+    await getStudentProfile(authenticatedUserId);
+
+  const studentProfile = storedProfile ?? {
+    full_name: "",
+    preferred_name: "",
+    student_id: "",
+    programme: "",
+    faculty: "",
+    current_year: null,
+    current_trimester: null,
+    academic_standing: "NORMAL",
+    cgpa: null,
+  };
+
   conversationHistory.push({
     role: "User",
     text: userInput,
@@ -30,7 +53,12 @@ async function processUserMessage(userInput) {
 
   const historyText = buildHistoryText();
   const contextText = await getRelevantContext(userInput);
-  const prompt = buildPrompt(historyText, contextText, studentProfile);
+
+  const prompt = buildPrompt(
+    historyText,
+    contextText,
+    studentProfile,
+  );
 
   const aiResponse = await getGeminiResponse(prompt);
 

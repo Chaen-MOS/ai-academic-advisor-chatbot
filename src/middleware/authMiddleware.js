@@ -38,6 +38,10 @@ async function requireAuth(req, res, next) {
         typeof data.claims.email === "string"
           ? data.claims.email
           : null,
+      userMetadata:
+        typeof data.claims.user_metadata === "object"
+          ? data.claims.user_metadata
+          : {},
     };
 
     next();
