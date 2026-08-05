@@ -1,7 +1,9 @@
 import {
   getUserConversations,
   getConversationMessages,
+  removeConversation,
 } from "../conversations/conversationService.js";
+import { retryAssistantMessage, } from "../services/chatService.js";
 
 async function handleListConversations(req, res) {
   try {
@@ -131,10 +133,108 @@ async function handleGetMessages(req, res) {
 
 }
 
+async function handleDeleteConversation(req, res) {
+  try {
+    const userId = req.user.id;
+    const { conversationId } = req.params;
+
+    const deletedConversation =
+      await removeConversation(
+        conversationId,
+        userId,
+      );
+
+    if (!deletedConversation) {
+      return res.status(404).json({
+        error: "Conversation not found.",
+        code: "CONVERSATION_NOT_FOUND",
+      });
+    }
+
+    return res.json({
+      success: true,
+      conversationId:
+        deletedConversation.id,
+    });
+  } catch (error) {
+    console.error(
+      "Delete Conversation Error:",
+      error,
+    );
+
+    if (
+      error.code ===
+      "CONVERSATION_NOT_FOUND"
+    ) {
+      return res.status(404).json({
+        error: "Conversation not found.",
+        code: "CONVERSATION_NOT_FOUND",
+      });
+    }
+
+    return res.status(500).json({
+      error:
+        "Failed to delete conversation.",
+      code:
+        "CONVERSATION_DELETE_FAILED",
+    });
+  }
+}
+
+async function handleRetryMessage(req, res) {
+  try {
+    const userId = req.user.id;
+    const {
+      conversationId,
+      assistantMessageId,
+    } = req.params;
+
+    const assistantMessage =
+      await retryAssistantMessage({
+        conversationId,
+        assistantMessageId,
+        authenticatedUserId: userId,
+      });
+
+    return res.json({
+      assistantMessage: {
+        id: assistantMessage.id,
+        role: assistantMessage.role,
+        content: assistantMessage.content,
+        processingStatus:
+          assistantMessage.processing_status,
+        createdAt: assistantMessage.created_at,
+      },
+    });
+  } catch (error) {
+    console.error("Retry Message Error:", error);
+
+    const status =
+      error.code === "CONVERSATION_NOT_FOUND" ||
+      error.code === "FAILED_MESSAGE_NOT_FOUND"
+        ? 404
+        : 500;
+
+    return res.status(status).json({
+      error:
+        status === 404
+          ? "Message not found."
+          : "Failed to retry message.",
+      message:
+        error instanceof Error
+          ? error.message
+          : undefined,
+      code:
+        error.code ?? "MESSAGE_RETRY_FAILED",
+    });
+  }
+}
+
 export {
 
   handleListConversations,
-
+  handleDeleteConversation,
   handleGetMessages,
+  handleRetryMessage,
 
 };

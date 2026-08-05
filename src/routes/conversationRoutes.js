@@ -7,8 +7,9 @@ import {
 import {
 
   handleListConversations,
-
+  handleDeleteConversation,
   handleGetMessages,
+  handleRetryMessage,
 
 } from "../controllers/conversationController.js";
 
@@ -25,4 +26,17 @@ router.get(
   requireAuth,
   handleGetMessages,
 );
+
+router.delete(
+  "/:conversationId",
+  requireAuth,
+  handleDeleteConversation
+);
+
+router.post(
+  "/:conversationId/messages/:assistantMessageId/retry",
+  requireAuth,
+  handleRetryMessage,
+);
+
 export default router;

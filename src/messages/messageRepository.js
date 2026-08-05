@@ -292,6 +292,29 @@ async function markMessageFailed(
   });
 }
 
+async function findPreviousUserMessage(
+  conversationId,
+  assistantMessageCreatedAt,
+) {
+  const {data, error} = await supabaseAdmin
+    .from("messages")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .eq("role", "USER")
+    .lt("created_at", assistantMessageCreatedAt)
+    .order("created_at", {ascending: false})
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Failed to find previous user message: ${error.message}`,
+    );
+  }
+
+  return data;
+}
+
 export {
   createMessage,
   findMessageByClientMessageId,
@@ -301,4 +324,5 @@ export {
   markMessageCompleted,
   markMessageFailed,
   updateMessage,
+  findPreviousUserMessage,
 };

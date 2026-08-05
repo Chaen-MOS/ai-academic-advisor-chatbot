@@ -1,7 +1,8 @@
 function buildPrompt(
-    historyText,
-    contextText,
-    studentProfile
+  historyText,
+  contextText,
+  studentProfile,
+  conversationSummary = "",
 ) {
     const profileText = `
     Student Profile:
@@ -22,6 +23,13 @@ function buildPrompt(
     }
     - CGPA: ${studentProfile.cgpa ?? "Not provided"}
     `;
+
+    const memorySection = conversationSummary
+        ? `
+        Long-term conversation memory:
+        ${conversationSummary}
+        `
+        : "";
     return `
 You are an UTAR Academic Advisor.
 
@@ -42,6 +50,8 @@ Keep your answer around 3 to 5 bullet points.
 
 UTAR Context:
 ${contextText}
+
+${memorySection}
 
 Conversation History:
 ${historyText}
