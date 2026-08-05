@@ -151,6 +151,15 @@ async function processUserMessage({
         academic_standing: "NORMAL",
         cgpa: null,
       };
+    
+    const isChatMemoryEnabled =
+      studentProfile?.chat_memory_enabled !== false;
+
+    const conversationSummary =
+      isChatMemoryEnabled
+        ? historyResult.conversation
+            .conversation_summary ?? ""
+        : "";
 
     const prompt = buildPrompt(
       historyText,
@@ -243,12 +252,13 @@ async function processUserMessage({
           }
         }
       updatedConversation =
-      await updateConversationSummaryIfNeeded({
-        conversation:
-          updatedConversation ?? conversation,
-        authenticatedUserId,
-      });
-
+        await updateConversationSummaryIfNeeded({
+          conversation:
+            updatedConversation ?? conversation,
+          authenticatedUserId,
+          chatMemoryEnabled:
+            isChatMemoryEnabled,
+        });
 
     return {
       conversation:
@@ -409,10 +419,15 @@ async function retryAssistantMessage({
   }
 }
 
+
 async function updateConversationSummaryIfNeeded({
   conversation,
   authenticatedUserId,
+  chatMemoryEnabled,
 }) {
+  if (!chatMemoryEnabled) {
+    return conversation;
+  }
   const messageCount =
     Number(conversation.message_count ?? 0);
 

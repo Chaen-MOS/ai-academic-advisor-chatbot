@@ -44,6 +44,7 @@ async function createStudentProfile(userId, profileData = {}) {
     avatar_url: profileData.avatarUrl ?? null,
     profile_source: "SELF_DECLARED",
     is_verified: false,
+    chat_memory_enabled: profileData.chatMemoryEnabled ?? true,
   };
 
   const { data, error } = await supabaseAdmin
@@ -80,6 +81,7 @@ async function updateStudentProfile(userId, profileData) {
     avatar_url: profileData.avatarUrl,
     profile_source: "SELF_DECLARED",
     is_verified: false,
+    chat_memory_enabled: profileData.chatMemoryEnabled,
   };
 
   Object.keys(payload).forEach((key) => {
