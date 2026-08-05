@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import chatRoutes from "./routes/chatRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import conversationRoutes from "./routes/conversationRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,6 +16,7 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/chat", chatRoutes);
+app.use("/api/conversations", conversationRoutes);
 app.use("/api/profile", profileRoutes);
 
 app.listen(PORT, () => {

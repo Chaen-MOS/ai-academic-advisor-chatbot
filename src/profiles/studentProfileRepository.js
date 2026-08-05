@@ -1,5 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-
+import { supabaseAdmin } from "../config/supabaseAdmin.js";
 const supabaseUrl = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -8,17 +7,6 @@ if (!supabaseUrl || !serviceRoleKey) {
     "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required."
   );
 }
-
-const supabaseAdmin = createClient(
-  supabaseUrl,
-  serviceRoleKey,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
 
 async function findStudentProfileByUserId(userId) {
   const { data, error } = await supabaseAdmin
