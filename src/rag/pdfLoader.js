@@ -1,14 +1,22 @@
-import fs from "fs";
-import { createRequire } from "module";
+import {createRequire} from "module";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 
-async function loadPdf(pdfPath) {
-  const dataBuffer = fs.readFileSync(pdfPath);
-  const data = await pdf(dataBuffer);
+async function loadPdfFromBuffer(fileBuffer) {
+  if (!fileBuffer) {
+    throw new Error("PDF buffer is required.");
+  }
 
-  return data.text;
+  const data = await pdf(fileBuffer);
+
+  return {
+    text: data.text ?? "",
+    pageCount: data.numpages ?? null,
+    info: data.info ?? null,
+  };
 }
 
-export { loadPdf };
+export {
+  loadPdfFromBuffer,
+};
