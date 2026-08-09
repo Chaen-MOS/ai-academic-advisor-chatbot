@@ -4,10 +4,12 @@ import {
 
 async function getRelevantContext(
   question,
+  userRole,
 ) {
   const relevantChunks =
     await retrieveRelevantChunks(
       question,
+      userRole,
       3,
     );
 

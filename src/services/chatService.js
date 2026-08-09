@@ -21,6 +21,9 @@ import {
   updateConversation,
 } from "../conversations/conversationRepository.js";
 import { generateConversationSummary, } from "./conversationSummaryService.js";
+import {
+  getUserRole,
+} from "../roles/roleService.js";
 
 
 function buildHistoryText(messages) {
@@ -106,6 +109,11 @@ async function processUserMessage({
   } = preparedTurn;
 
   try {
+    const userRole =
+      await getUserRole(
+        authenticatedUserId,
+      );
+
     const [
       historyResult,
       studentProfile,
@@ -123,6 +131,7 @@ async function processUserMessage({
 
       getRelevantContext(
         userInput.trim(),
+        userRole,
       ),
     ]);
 
@@ -165,10 +174,8 @@ async function processUserMessage({
       historyText,
       contextText,
       profileForPrompt,
-      historyResult.conversation
-        .conversation_summary ?? "",
+      conversationSummary,
     );
-
     const aiResponse =
       await getGeminiResponse(prompt);
 
@@ -357,14 +364,29 @@ async function retryAssistantMessage({
   });
 
   try {
+    const userRole =
+      await getUserRole(
+        authenticatedUserId,
+      );
+
     const [
       messages,
       studentProfile,
       contextText,
     ] = await Promise.all([
-      listRecentMessages(conversationId, 12),
-      getStudentProfile(authenticatedUserId),
-      getRelevantContext(userMessage.content),
+      listRecentMessages(
+        conversationId,
+        12,
+      ),
+
+      getStudentProfile(
+        authenticatedUserId,
+      ),
+
+      getRelevantContext(
+        userMessage.content,
+        userRole,
+      ),
     ]);
 
     const historyText = buildHistoryText(

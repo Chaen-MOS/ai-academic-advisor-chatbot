@@ -8,6 +8,7 @@ import {
 
 export async function retrieveRelevantChunks(
   question,
+  userRole,
   topK = 5,
 ) {
   if (
@@ -22,17 +23,18 @@ export async function retrieveRelevantChunks(
       question.trim(),
     );
 
-  const matches =
-    await searchKnowledgeChunks({
-      queryEmbedding:
-        questionEmbedding,
+  return searchKnowledgeChunks({
+    queryEmbedding:
+      questionEmbedding,
 
-      matchThreshold:
-        0.3,
+    userRole,
 
-      matchCount:
-        topK,
-    });
+    matchThreshold:
+      0.3,
+
+    matchCount:
+      topK,
+  });
 
   return matches;
 }

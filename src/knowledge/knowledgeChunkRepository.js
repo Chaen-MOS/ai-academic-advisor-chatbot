@@ -58,6 +58,7 @@ async function deleteChunksByDocumentId(
 
 async function searchKnowledgeChunks({
   queryEmbedding,
+  userRole,
   matchThreshold = 0.5,
   matchCount = 5,
 }) {
@@ -65,9 +66,17 @@ async function searchKnowledgeChunks({
     await supabaseAdmin.rpc(
       "match_knowledge_chunks",
       {
-        query_embedding: queryEmbedding,
-        match_threshold: matchThreshold,
-        match_count: matchCount,
+        query_embedding:
+          queryEmbedding,
+
+        user_role:
+          userRole,
+
+        match_threshold:
+          matchThreshold,
+
+        match_count:
+          matchCount,
       },
     );
 

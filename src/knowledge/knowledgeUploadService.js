@@ -14,6 +14,7 @@ async function createUploadedKnowledgeDocument({
   category,
   description,
   uploadedBy,
+  accessibleRoles,
 }) {
   if (!file) {
     throw new Error(
@@ -39,29 +40,39 @@ async function createUploadedKnowledgeDocument({
     });
 
   const document =
-    await createKnowledgeDocument({
-        title:
-        title?.trim() ||
-        file.originalname,
+  await createKnowledgeDocument({
+    title:
+      title?.trim() ||
+      file.originalname,
 
-        fileName:
-        file.originalname,
+    fileName:
+      file.originalname,
 
-        storagePath,
+    storagePath,
 
-        mimeType:
-        file.mimetype,
+    mimeType:
+      file.mimetype,
 
-        category:
-        category?.trim() ||
-        null,
+    category:
+      category?.trim() ||
+      null,
 
-        description:
-        description?.trim() ||
-        null,
+    description:
+      description?.trim() ||
+      null,
 
-        uploadedBy,
-    });
+    uploadedBy,
+
+    accessibleRoles:
+      Array.isArray(accessibleRoles) &&
+      accessibleRoles.length > 0
+        ? accessibleRoles
+        : [
+            "STUDENT",
+            "LECTURER",
+            "ADMIN",
+          ],
+  });
 
     const processingResult =
     await processKnowledgeDocument({

@@ -8,6 +8,11 @@ async function createKnowledgeDocument({
   category = null,
   description = null,
   uploadedBy,
+  accessibleRoles = [
+    "STUDENT",
+    "LECTURER",
+    "ADMIN",
+  ],
 }) {
   const {data, error} = await supabaseAdmin
     .from("knowledge_documents")
@@ -21,6 +26,7 @@ async function createKnowledgeDocument({
       uploaded_by: uploadedBy,
       processing_status: "PENDING",
       is_enabled: true,
+      accessible_roles: accessibleRoles,
     })
     .select("*")
     .single();
@@ -129,6 +135,8 @@ async function deleteKnowledgeDocument(
 
   return data;
 }
+
+
 
 export {
   createKnowledgeDocument,

@@ -130,31 +130,51 @@ async function handleUploadKnowledgeDocument(
       });
     }
 
+    let accessibleRoles;
+
+    if (req.body.accessibleRoles) {
+      try {
+        accessibleRoles =
+          JSON.parse(
+            req.body.accessibleRoles,
+          );
+      } catch {
+        return res.status(400).json({
+          error:
+            "Invalid accessible roles.",
+          code:
+            "INVALID_ACCESSIBLE_ROLES",
+        });
+      }
+    }
+
     const result =
-        await createUploadedKnowledgeDocument({
-            file:
-            req.file,
+      await createUploadedKnowledgeDocument({
+        file:
+          req.file,
 
-            title:
-            req.body.title,
+        title:
+          req.body.title,
 
-            category:
-            req.body.category,
+        category:
+          req.body.category,
 
-            description:
-            req.body.description,
+        description:
+          req.body.description,
 
-            uploadedBy:
-            req.user.id,
-        });
+        uploadedBy:
+          req.user.id,
 
-        return res.status(201).json({
-        document:
-            result.document,
+        accessibleRoles,
+      });
 
-        chunkCount:
-            result.chunkCount,
-        });
+    return res.status(201).json({
+      document:
+        result.document,
+
+      chunkCount:
+        result.chunkCount,
+    });
   } catch (error) {
     console.error(
       "Upload Knowledge Error:",
