@@ -14,6 +14,7 @@ import {
   handleListKnowledgeDocuments,
   handleSetKnowledgeEnabled,
   handleUploadKnowledgeDocument,
+  handleSetKnowledgeAccess,
 } from "../controllers/knowledgeController.js";
 
 import {
@@ -49,6 +50,13 @@ router.patch(
   requireAuth,
   requireRole("ADMIN"),
   handleSetKnowledgeEnabled,
+);
+
+router.patch(
+  "/:documentId/access",
+  requireAuth,
+  requireRole("ADMIN"),
+  handleSetKnowledgeAccess,
 );
 
 router.delete(

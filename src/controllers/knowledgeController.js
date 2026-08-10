@@ -3,6 +3,7 @@ import {
   getKnowledgeDocuments,
   removeKnowledgeDocument,
   setKnowledgeDocumentEnabled,
+  setKnowledgeDocumentAccess,
 } from "../knowledge/knowledgeService.js";
 import {
   createUploadedKnowledgeDocument,
@@ -193,10 +194,47 @@ async function handleUploadKnowledgeDocument(
   }
 }
 
+async function handleSetKnowledgeAccess(
+  req,
+  res,
+) {
+  try {
+    const document =
+      await setKnowledgeDocumentAccess(
+        req.params.documentId,
+        req.body.accessibleRoles,
+      );
+
+    return res.json({
+      document,
+    });
+  } catch (error) {
+    const status =
+      error.code ===
+      "KNOWLEDGE_DOCUMENT_NOT_FOUND"
+        ? 404
+        : error.code ===
+            "INVALID_ACCESSIBLE_ROLES"
+          ? 400
+          : 500;
+
+    return res.status(status).json({
+      error:
+        error.message ??
+        "Failed to update document access.",
+
+      code:
+        error.code ??
+        "KNOWLEDGE_ACCESS_UPDATE_FAILED",
+    });
+  }
+}
+
 export {
   handleDeleteKnowledgeDocument,
   handleGetKnowledgeDocument,
   handleListKnowledgeDocuments,
+  handleSetKnowledgeAccess,
   handleSetKnowledgeEnabled,
   handleUploadKnowledgeDocument,
 };

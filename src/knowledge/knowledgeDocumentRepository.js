@@ -83,14 +83,22 @@ async function updateKnowledgeDocument(
     title: updates.title,
     category: updates.category,
     description: updates.description,
+
     processing_status:
       updates.processingStatus,
+
     processing_error:
       updates.processingError,
+
     is_enabled:
       updates.isEnabled,
+
+    accessible_roles:
+      updates.accessibleRoles,
+
     version:
       updates.version,
+
     updated_at:
       new Date().toISOString(),
   };

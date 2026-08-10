@@ -11,8 +11,90 @@ import {
   listChunksByDocumentId,
 } from "./knowledgeChunkRepository.js";
 
+const VALID_ACCESS_ROLES = [
+  "STUDENT",
+  "LECTURER",
+  "ADMIN",
+];
+
 async function getKnowledgeDocuments() {
   return listKnowledgeDocuments();
+}
+
+async function setKnowledgeDocumentAccess(
+  documentId,
+  accessibleRoles,
+) {
+  const document =
+    await findKnowledgeDocumentById(
+      documentId,
+    );
+
+  if (!document) {
+    const error = new Error(
+      "Knowledge document not found.",
+    );
+
+    error.code =
+      "KNOWLEDGE_DOCUMENT_NOT_FOUND";
+
+    throw error;
+  }
+
+  if (
+    !Array.isArray(
+      accessibleRoles,
+    ) ||
+    accessibleRoles.length === 0
+  ) {
+    const error = new Error(
+      "At least one accessible role is required.",
+    );
+
+    error.code =
+      "INVALID_ACCESSIBLE_ROLES";
+
+    throw error;
+  }
+
+  const normalizedRoles = [
+    ...new Set(
+      accessibleRoles.map(role =>
+        typeof role === "string"
+          ? role
+              .trim()
+              .toUpperCase()
+          : "",
+      ),
+    ),
+  ];
+
+  const hasInvalidRole =
+    normalizedRoles.some(
+      role =>
+        !VALID_ACCESS_ROLES.includes(
+          role,
+        ),
+    );
+
+  if (hasInvalidRole) {
+    const error = new Error(
+      "Invalid accessible role.",
+    );
+
+    error.code =
+      "INVALID_ACCESSIBLE_ROLES";
+
+    throw error;
+  }
+
+  return updateKnowledgeDocument(
+    documentId,
+    {
+      accessibleRoles:
+        normalizedRoles,
+    },
+  );
 }
 
 async function getKnowledgeDocument(
@@ -123,4 +205,5 @@ export {
   getKnowledgeDocuments,
   removeKnowledgeDocument,
   setKnowledgeDocumentEnabled,
+  setKnowledgeDocumentAccess,
 };
