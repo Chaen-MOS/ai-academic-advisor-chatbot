@@ -7,7 +7,8 @@ import conversationRoutes from "./routes/conversationRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import knowledgeRoutes from "./routes/knowledgeRoutes.js";
 import timetableRoutes from "./routes/timetableRoutes.js";
-import timetableRoutes from "./routes/timetableRoutes.js";
+import eventRoutes from "./routes/eventRoutes.js";
+import supportRoutes from "./routes/supportRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,8 +25,9 @@ app.use("/api/conversations", conversationRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/knowledge", knowledgeRoutes);
-app.use("/api/timetable",timetableRoutes,);
-
+app.use("/api/timetable", timetableRoutes,);
+app.use("/api/events", eventRoutes,);
+app.use("/api/support", supportRoutes,);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
