@@ -45,6 +45,8 @@ async function createStudentProfile(userId, profileData = {}) {
     profile_source: "SELF_DECLARED",
     is_verified: false,
     chat_memory_enabled: profileData.chatMemoryEnabled ?? true,
+    enable_class_reminders: profileData.enableClassReminders ?? true,
+    enable_event_reminders: profileData.enableEventReminders ?? true,
   };
 
   const { data, error } = await supabaseAdmin
@@ -82,6 +84,8 @@ async function updateStudentProfile(userId, profileData) {
     profile_source: "SELF_DECLARED",
     is_verified: false,
     chat_memory_enabled: profileData.chatMemoryEnabled,
+    enable_class_reminders: profileData.enableClassReminders,
+    enable_event_reminders: profileData.enableEventReminders,
   };
 
   Object.keys(payload).forEach((key) => {
