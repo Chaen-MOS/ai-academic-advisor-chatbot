@@ -160,6 +160,8 @@ async function updateConversation(
     last_message_at: updates.lastMessageAt,
     archived_at: updates.archivedAt,
     deleted_at: updates.deletedAt,
+    pending_intent: updates.pendingIntent,
+    pending_field: updates.pendingField,
   };
 
   Object.keys(allowedUpdates).forEach((key) => {

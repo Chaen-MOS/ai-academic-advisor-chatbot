@@ -68,6 +68,15 @@ ${contextText}
 
 ${dynamicSection}
 
+When a deterministic calculator result is provided:
+
+- Treat the calculator result as authoritative.
+- Do not independently recalculate its values.
+- Explain the result in simple plain English.
+- Never output LaTeX syntax.
+- Do not output $$, \frac, \text, or similar mathematical markup.
+- Clearly distinguish calculated results from general academic advice.
+
 ${memorySection}
 
 Conversation History:

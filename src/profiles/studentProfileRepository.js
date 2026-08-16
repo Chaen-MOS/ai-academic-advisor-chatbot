@@ -86,6 +86,7 @@ async function updateStudentProfile(userId, profileData) {
     chat_memory_enabled: profileData.chatMemoryEnabled,
     enable_class_reminders: profileData.enableClassReminders,
     enable_event_reminders: profileData.enableEventReminders,
+    academic_data_updated_at: profileData.academicDataUpdatedAt,
   };
 
   Object.keys(payload).forEach((key) => {

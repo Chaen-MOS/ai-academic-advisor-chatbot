@@ -33,8 +33,24 @@ async function saveStudentProfile(userId, profileData) {
   return updateStudentProfile(userId, profileData);
 }
 
+async function updateAcademicData(
+  userId,
+  updates,
+) {
+  return updateStudentProfile(
+    userId,
+    {
+      ...updates,
+
+      academicDataUpdatedAt:
+        new Date().toISOString(),
+    },
+  );
+}
+
 export {
   getStudentProfile,
   getOrCreateStudentProfile,
   saveStudentProfile,
+  updateAcademicData
 };

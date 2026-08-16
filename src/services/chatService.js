@@ -15,17 +15,20 @@ import {
   listRecentMessages,
   listMessages,
 } from "../messages/messageRepository.js";
-import { getStudentProfile } from "../profiles/studentProfileService.js";
-import {
-  findConversationOwnedByUser,
-  updateConversation,
-} from "../conversations/conversationRepository.js";
+import { getStudentProfile, updateAcademicData,  } from "../profiles/studentProfileService.js";
+import { findConversationOwnedByUser, updateConversation,} from "../conversations/conversationRepository.js";
 import { generateConversationSummary, } from "./conversationSummaryService.js";
 import { getUserRole, } from "../roles/roleService.js";
 import { classifyIntent, } from "../ai/intent/intentClassifier.js";
 import { INTENTS, } from "../ai/intent/intentTypes.js";
 import { buildTimetableContext, } from "../ai/context/timetableContext.js";
 import { buildEventContext, } from "../ai/context/eventContext.js";
+import { getMissingClarification, } from "../ai/clarification/clarificationEngine.js";
+import { findMissingCgpaField, } from "../ai/clarification/cgpaClarification.js";
+import { parseAcademicValue, } from "../ai/clarification/academicValueParser.js";
+import { calculateHighestPossibleCgpa, } from "../ai/calculators/cgpaCalculator.js";
+import { CGPA_ACTIONS, classifyCgpaAction, } from "../ai/calculators/cgpaActionClassifier.js";
+
 
 function buildHistoryText(messages) {
   return messages
@@ -169,6 +172,348 @@ async function processUserMessage({
       ),
     ]);
 
+    let workingProfile =
+      studentProfile ?? {
+        full_name: "",
+        preferred_name: "",
+        student_id: "",
+        programme: "",
+        faculty: "",
+        current_year: null,
+        current_trimester: null,
+        academic_standing: null,
+        cgpa: null,
+        credits_earned: null,
+        total_credits_required: null,
+        academic_data_updated_at: null,
+      };
+
+    /*
+    * If the previous assistant message asked for one
+    * academic field, treat the current user message as
+    * the answer to that field.
+    */
+    if (
+      conversation.pending_intent ===
+        INTENTS.CGPA &&
+      conversation.pending_field
+    ) {
+      const pendingField =
+        conversation.pending_field;
+
+      const parsed =
+        parseAcademicValue(
+          pendingField,
+          userInput.trim(),
+        );
+
+      /*
+      * User did not provide a valid value.
+      * Keep the pending state and ask again.
+      */
+      if (!parsed.valid) {
+        let clarificationResponse;
+
+        if (
+          pendingField === "cgpa"
+        ) {
+          clarificationResponse =
+            "Please enter a valid CGPA between 0.00 and 4.00.";
+        } else {
+          clarificationResponse =
+            "Please enter a valid number of credit hours.";
+        }
+
+        const completedAssistantMessage =
+          await markMessageCompleted(
+            assistantMessage.id,
+            clarificationResponse,
+          );
+
+        const updatedConversation =
+          await updateConversation(
+            conversation.id,
+            authenticatedUserId,
+            {
+              lastMessagePreview:
+                createMessagePreview(
+                  clarificationResponse,
+                ),
+              lastMessageAt:
+                new Date().toISOString(),
+            },
+          );
+
+        return {
+          conversation:
+            updatedConversation ??
+            conversation,
+
+          wasCreated,
+
+          userMessage,
+
+          assistantMessage:
+            completedAssistantMessage,
+        };
+      }
+
+      /*
+      * Convert database field name into the
+      * camelCase structure expected by the
+      * profile service.
+      */
+      const academicUpdate = {};
+
+      if (
+        pendingField === "cgpa"
+      ) {
+        academicUpdate.cgpa =
+          parsed.value;
+      }
+
+      if (
+        pendingField ===
+        "credits_earned"
+      ) {
+        academicUpdate.creditsEarned =
+          parsed.value;
+      }
+
+      if (
+        pendingField ===
+        "total_credits_required"
+      ) {
+        academicUpdate.totalCreditsRequired =
+          parsed.value;
+      }
+
+      /*
+      * Save the newly supplied academic value.
+      */
+      workingProfile =
+        await updateAcademicData(
+          authenticatedUserId,
+          academicUpdate,
+        );
+
+      /*
+      * The previous slot has now been answered.
+      */
+      await updateConversation(
+        conversation.id,
+        authenticatedUserId,
+        {
+          pendingIntent: null,
+          pendingField: null,
+        },
+      );
+    }
+
+    /*
+    * The user is either starting a CGPA request
+    * or continuing an existing CGPA clarification.
+    */
+    const isCgpaFlow =
+      intent === INTENTS.CGPA ||
+      conversation.pending_intent ===
+        INTENTS.CGPA;
+
+    if (isCgpaFlow) {
+      const missingField =
+        findMissingCgpaField(
+          workingProfile,
+        );
+
+      /*
+      * There is still missing academic information.
+      * Remember what we are waiting for, then ask.
+      */
+      if (missingField) {
+        const updatedConversation =
+          await updateConversation(
+            conversation.id,
+            authenticatedUserId,
+            {
+              pendingIntent:
+                INTENTS.CGPA,
+
+              pendingField:
+                missingField.field,
+
+              lastMessagePreview:
+                createMessagePreview(
+                  missingField.question,
+                ),
+
+              lastMessageAt:
+                new Date().toISOString(),
+            },
+          );
+
+        const completedAssistantMessage =
+          await markMessageCompleted(
+            assistantMessage.id,
+            missingField.question,
+          );
+
+        return {
+          conversation:
+            updatedConversation ??
+            conversation,
+
+          wasCreated,
+
+          userMessage,
+
+          assistantMessage:
+            completedAssistantMessage,
+        };
+      }
+
+      /*
+      * All required CGPA data is available.
+      * Clear any leftover clarification state.
+      */
+      if (
+        conversation.pending_intent ||
+        conversation.pending_field
+      ) {
+        await updateConversation(
+          conversation.id,
+          authenticatedUserId,
+          {
+            pendingIntent: null,
+            pendingField: null,
+          },
+        );
+      }
+    }
+
+    let calculatorContext = "";
+
+    if (
+      intent === INTENTS.CGPA ||
+      conversation.pending_intent ===
+        INTENTS.CGPA
+    ) {
+      /*
+      * The original CGPA question may be
+      * earlier in the conversation if the
+      * current message is only a clarification
+      * answer such as "123".
+      */
+      const cgpaQuestion =
+        conversation.pending_intent ===
+          INTENTS.CGPA
+          ? historyResult.messages
+              .filter(
+                message =>
+                  message.role ===
+                  "USER",
+              )
+              .map(
+                message =>
+                  message.content,
+              )
+              .find(
+                content =>
+                  classifyIntent(
+                    content,
+                  ) ===
+                  INTENTS.CGPA,
+              ) ?? userInput
+          : userInput;
+
+      const cgpaAction =
+        classifyCgpaAction(
+          cgpaQuestion,
+        );
+
+      console.log(
+        "CGPA ACTION:",
+        cgpaAction,
+      );
+
+      if (
+        cgpaAction ===
+        CGPA_ACTIONS.HIGHEST_POSSIBLE
+      ) {
+        const result =
+          calculateHighestPossibleCgpa({
+            currentCgpa:
+              Number(
+                workingProfile.cgpa,
+              ),
+
+            creditsEarned:
+              Number(
+                workingProfile
+                  .credits_earned,
+              ),
+
+            totalCreditsRequired:
+              Number(
+                workingProfile
+                  .total_credits_required,
+              ),
+          });
+          if (result.alreadyAchieved) {
+            calculatorContext = `
+          CGPA CALCULATOR RESULT
+
+          Current CGPA:
+          ${workingProfile.cgpa}
+
+          Target CGPA:
+          ${targetCgpa}
+
+          The student has already achieved the target CGPA.
+
+          Important instructions:
+
+          - Congratulate the student.
+          - Do not mention a negative GPA.
+          - Do not recalculate the result.
+          - Do not use LaTeX.
+          `;
+          } else {
+            calculatorContext = `
+          CGPA CALCULATOR RESULT
+
+          Calculation type:
+          Required GPA For Target CGPA
+
+          Current CGPA:
+          ${workingProfile.cgpa}
+
+          Target CGPA:
+          ${targetCgpa}
+
+          Credits earned:
+          ${workingProfile.credits_earned}
+
+          Remaining credits:
+          ${result.remainingCredits}
+
+          Required average GPA:
+          ${result.requiredAverageGpa}
+
+          Achievable:
+          ${result.achievable ? "YES" : "NO"}
+
+          Important instructions:
+
+          - This result was calculated programmatically.
+          - Treat this calculator result as the source of truth.
+          - Do not recalculate the CGPA yourself.
+          - Explain the result clearly.
+          - Do not use LaTeX.
+          `;
+          }
+      }
+    }
+
     /*
      * Remove the current PROCESSING assistant placeholder.
      * The current USER message remains in the prompt history.
@@ -182,19 +527,6 @@ async function processUserMessage({
     const historyText =
       buildHistoryText(promptMessages);
 
-    const profileForPrompt =
-      studentProfile ?? {
-        full_name: "",
-        preferred_name: "",
-        student_id: "",
-        programme: "",
-        faculty: "",
-        current_year: null,
-        current_trimester: null,
-        academic_standing: "NORMAL",
-        cgpa: null,
-      };
-    
     const isChatMemoryEnabled =
       studentProfile?.chat_memory_enabled !== false;
 
@@ -207,6 +539,7 @@ async function processUserMessage({
     const dynamicContext = [
       timetableContext,
       eventContext,
+      calculatorContext,
     ]
       .filter(Boolean)
       .join("\n");
@@ -214,7 +547,7 @@ async function processUserMessage({
     const prompt = buildPrompt(
       historyText,
       contextText,
-      profileForPrompt,
+      workingProfile,
       conversationSummary,
       dynamicContext,
       intent,
