@@ -21,10 +21,11 @@ import {
   updateConversation,
 } from "../conversations/conversationRepository.js";
 import { generateConversationSummary, } from "./conversationSummaryService.js";
-import {
-  getUserRole,
-} from "../roles/roleService.js";
-
+import { getUserRole, } from "../roles/roleService.js";
+import { classifyIntent, } from "../ai/intent/intentClassifier.js";
+import { INTENTS, } from "../ai/intent/intentTypes.js";
+import { buildTimetableContext, } from "../ai/context/timetableContext.js";
+import { buildEventContext, } from "../ai/context/eventContext.js";
 
 function buildHistoryText(messages) {
   return messages
@@ -114,6 +115,39 @@ async function processUserMessage({
         authenticatedUserId,
       );
 
+      const intent =
+        classifyIntent(
+          userInput.trim(),
+        );
+
+      console.log(
+        "DETECTED INTENT:",
+        intent,
+      );
+
+      let timetableContext = "";
+      let eventContext = "";
+
+      if (
+        intent === INTENTS.TIMETABLE ||
+        intent === INTENTS.SCHEDULE
+      ) {
+        timetableContext =
+          await buildTimetableContext(
+            authenticatedUserId,
+          );
+      }
+
+      if (
+        intent === INTENTS.EVENT ||
+        intent === INTENTS.SCHEDULE
+      ) {
+        eventContext =
+          await buildEventContext(
+            authenticatedUserId,
+          );
+      }
+
     const [
       historyResult,
       studentProfile,
@@ -170,11 +204,20 @@ async function processUserMessage({
             .conversation_summary ?? ""
         : "";
 
+    const dynamicContext = [
+      timetableContext,
+      eventContext,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
     const prompt = buildPrompt(
       historyText,
       contextText,
       profileForPrompt,
       conversationSummary,
+      dynamicContext,
+      intent,
     );
     const aiResponse =
       await getGeminiResponse(prompt);

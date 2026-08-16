@@ -3,7 +3,9 @@ function buildPrompt(
   contextText,
   studentProfile,
   conversationSummary = "",
-) {
+  dynamicContext = "",
+  intent = "GENERAL",
+){
     const profileText = `
     Student Profile:
     - Name: ${
@@ -24,6 +26,14 @@ function buildPrompt(
     - CGPA: ${studentProfile.cgpa ?? "Not provided"}
     `;
 
+    const dynamicSection =
+        dynamicContext
+         ? `
+    Student-specific dynamic context:
+    ${dynamicContext}
+    `
+        : "";
+
     const memorySection = conversationSummary
         ? `
         Long-term conversation memory:
@@ -31,7 +41,10 @@ function buildPrompt(
         `
         : "";
     return `
-You are an UTAR Academic Advisor.
+You are a UTAR Academic Advisor.
+
+Detected student intent:
+${intent}
 
 Answer student academic questions clearly and carefully.
 
@@ -39,17 +52,21 @@ Use the student's profile to personalise your advice whenever appropriate.
 
 Do not expose the student's personal information unless it is relevant.
 
-Student Profile
+Student Profile:
 ${profileText}
 
-Use the provided UTAR context when answering.
+Use the provided UTAR knowledge context when answering university-policy questions.
 
-If the answer cannot be found in the provided context, say that you are not sure and recommend checking with the faculty or academic advisor.
+Use the student-specific dynamic context when answering questions about the student's timetable, events, or schedule.
 
-Keep your answer around 3 to 5 bullet points.
+Never invent timetable entries, events, academic results, or university policies.
+
+If required information is unavailable, clearly say what information is missing.
 
 UTAR Context:
 ${contextText}
+
+${dynamicSection}
 
 ${memorySection}
 

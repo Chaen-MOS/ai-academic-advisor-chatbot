@@ -35,6 +35,4 @@ export async function retrieveRelevantChunks(
     matchCount:
       topK,
   });
-
-  return matches;
 }
