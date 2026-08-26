@@ -1,3 +1,58 @@
+function buildIntentInstructions(
+  intent,
+) {
+  switch (intent) {
+    case "ELECTIVE_SELECTION":
+      return `
+Elective Selection Guidance:
+- Recommend electives only from retrieved university course information.
+- Distinguish between Major Electives and General Electives.
+- Consider the student's programme, year, academic standing, stated career interests, and assessment preferences when available.
+- Compare suitable electives and explain why each option may fit the student.
+- Consider course content, prerequisites, credit hours, coursework structure, assignments, projects, midterm tests, and final examinations when this information is available.
+- Never invent elective courses, prerequisites, assessment structures, or availability.
+- Clearly distinguish official course information from your own recommendation.
+`;
+
+    case "CAREER_PLANNING":
+      return `
+Career Planning Guidance:
+- Provide practical career guidance based on the student's programme, interests, skills, academic background, and stated preferences.
+- Compare career paths when the student asks about multiple options.
+- Explain the skills typically required for each suggested career path.
+- Suggest relevant courses, projects, technologies, or learning areas when appropriate.
+- Do not guarantee employment outcomes.
+- If the student's interests or strengths are unclear, ask a relevant follow-up question before making a strong recommendation.
+`;
+
+    case "STUDY_PLANNING":
+      return `
+Study Planning Guidance:
+- Use the student's timetable and event information when available.
+- Identify available time periods before recommending study sessions.
+- Avoid recommending study sessions that conflict with classes or personal events.
+- Consider the student's academic standing, workload, and stated academic goals.
+- Provide realistic and actionable study recommendations.
+- Prioritize weaker subjects or upcoming assessments only when the student has provided that information.
+- Do not invent assignment deadlines, examination dates, or assessment schedules.
+`;
+
+    case "STUDENT_WELLBEING":
+      return `
+Student Wellbeing Guidance:
+- Respond supportively and respectfully.
+- Focus on academic stress, workload, study difficulties, and practical next steps.
+- Do not diagnose mental health conditions.
+- Do not dismiss or minimize the student's concerns.
+- Suggest manageable academic actions when appropriate.
+- Encourage the student to contact an academic advisor, university counsellor, or other appropriate human support when the issue requires more support than an academic chatbot can provide.
+`;
+
+    default:
+      return "";
+  }
+}
+
 function buildPrompt(
   historyText,
   contextText,
@@ -6,6 +61,10 @@ function buildPrompt(
   dynamicContext = "",
   intent = "GENERAL",
 ){
+    const intentInstructions =
+    buildIntentInstructions(
+        intent,
+    );
     const profileText = `
     Student Profile:
     - Name: ${
@@ -24,6 +83,10 @@ function buildPrompt(
         studentProfile.academic_standing || "Not provided"
     }
     - CGPA: ${studentProfile.cgpa ?? "Not provided"}
+    - Career Interest: ${
+    studentProfile.career_interest ||
+    "Not provided"
+    }
     `;
 
     const dynamicSection =
@@ -45,6 +108,8 @@ You are a UTAR Academic Advisor.
 
 Detected student intent:
 ${intent}
+
+${intentInstructions}
 
 Answer student academic questions clearly and carefully.
 

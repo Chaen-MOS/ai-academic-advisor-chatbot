@@ -47,6 +47,9 @@ async function createStudentProfile(userId, profileData = {}) {
     chat_memory_enabled: profileData.chatMemoryEnabled ?? true,
     enable_class_reminders: profileData.enableClassReminders ?? true,
     enable_event_reminders: profileData.enableEventReminders ?? true,
+    career_interest: profileData.careerInterest ?? null,
+    elective_type: profileData.electiveType ?? null,
+    assessment_preference: profileData.assessmentPreference ?? null,
   };
 
   const { data, error } = await supabaseAdmin
@@ -87,6 +90,9 @@ async function updateStudentProfile(userId, profileData) {
     enable_class_reminders: profileData.enableClassReminders,
     enable_event_reminders: profileData.enableEventReminders,
     academic_data_updated_at: profileData.academicDataUpdatedAt,
+    career_interest: profileData.careerInterest,
+    elective_type: profileData.electiveType,
+    assessment_preference: profileData.assessmentPreference,
   };
 
   Object.keys(payload).forEach((key) => {

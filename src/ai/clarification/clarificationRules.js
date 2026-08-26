@@ -33,6 +33,24 @@ const CLARIFICATION_RULES = {
         "How many total credit hours are required for your programme?",
     },
   ],
+
+  [INTENTS.ELECTIVE_SELECTION]: [
+    {
+      field: "elective_type",
+      question:
+        "Are you currently looking for a Major Elective or a General Elective?",
+    },
+    {
+      field: "career_interest",
+      question:
+        "What career or technical area are you most interested in, such as AI, backend development, cybersecurity, data analytics, or game development?",
+    },
+    {
+      field: "assessment_preference",
+      question:
+        "Do you prefer coursework and project-based subjects, final-exam-based subjects, or a balanced assessment structure?",
+    },
+  ],
 };
 
 export {

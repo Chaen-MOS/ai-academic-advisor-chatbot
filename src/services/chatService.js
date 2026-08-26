@@ -26,9 +26,14 @@ import { buildEventContext, } from "../ai/context/eventContext.js";
 import { getMissingClarification, } from "../ai/clarification/clarificationEngine.js";
 import { findMissingCgpaField, } from "../ai/clarification/cgpaClarification.js";
 import { parseAcademicValue, } from "../ai/clarification/academicValueParser.js";
-import { calculateHighestPossibleCgpa, } from "../ai/calculators/cgpaCalculator.js";
+import {
+  calculateHighestPossibleCgpa,
+  calculateRequiredAverageGpa,
+} from "../ai/calculators/cgpaCalculator.js";
 import { CGPA_ACTIONS, classifyCgpaAction, } from "../ai/calculators/cgpaActionClassifier.js";
-
+import {
+  parseElectiveValue,
+} from "../ai/clarification/electiveValueParser.js";
 
 function buildHistoryText(messages) {
   return messages
@@ -71,6 +76,42 @@ function mapGeminiErrorCode(error) {
   }
 
   return "GEMINI_ERROR";
+}
+
+function extractTargetCgpa(
+  question,
+) {
+  if (
+    typeof question !== "string"
+  ) {
+    return null;
+  }
+
+  const matches =
+    question.match(
+      /\b([0-3](?:\.\d{1,2})?|4(?:\.0{1,2})?)\b/g,
+    );
+
+  if (!matches?.length) {
+    return null;
+  }
+
+  const values =
+    matches
+      .map(Number)
+      .filter(
+        value =>
+          value >= 0 &&
+          value <= 4,
+      );
+
+  if (!values.length) {
+    return null;
+  }
+
+  return values[
+    values.length - 1
+  ];
 }
 
 async function processUserMessage({
@@ -133,7 +174,8 @@ async function processUserMessage({
 
       if (
         intent === INTENTS.TIMETABLE ||
-        intent === INTENTS.SCHEDULE
+        intent === INTENTS.SCHEDULE ||
+        intent === INTENTS.STUDY_PLANNING
       ) {
         timetableContext =
           await buildTimetableContext(
@@ -143,13 +185,41 @@ async function processUserMessage({
 
       if (
         intent === INTENTS.EVENT ||
-        intent === INTENTS.SCHEDULE
+        intent === INTENTS.SCHEDULE ||
+        intent === INTENTS.STUDY_PLANNING
       ) {
         eventContext =
           await buildEventContext(
             authenticatedUserId,
           );
       }
+
+      let retrievalQuery =
+        userInput.trim();
+
+      if (
+        intent ===
+          INTENTS.ELECTIVE_SELECTION ||
+        conversation.pending_intent ===
+          INTENTS.ELECTIVE_SELECTION
+      ) {
+        retrievalQuery = `
+      Elective course recommendation.
+
+      Student question:
+      ${userInput.trim()}
+
+      Find relevant Major Electives or General Electives,
+      including course descriptions, assessment structures,
+      prerequisites, credit hours, course topics,
+      and career relevance.
+      `;
+      }
+
+      console.log(
+        "RAG RETRIEVAL QUERY:",
+        retrievalQuery,
+      );
 
     const [
       historyResult,
@@ -167,7 +237,7 @@ async function processUserMessage({
       ),
 
       getRelevantContext(
-        userInput.trim(),
+        retrievalQuery,
         userRole,
       ),
     ]);
@@ -186,6 +256,9 @@ async function processUserMessage({
         credits_earned: null,
         total_credits_required: null,
         academic_data_updated_at: null,
+        elective_type: null,
+        career_interest: null,
+        assessment_preference: null,
       };
 
     /*
@@ -310,6 +383,153 @@ async function processUserMessage({
       );
     }
 
+    if (
+      conversation.pending_intent ===
+        INTENTS.ELECTIVE_SELECTION &&
+      conversation.pending_field
+    ) {
+      const pendingField =
+        conversation.pending_field;
+
+      const parsed =
+        parseElectiveValue(
+          pendingField,
+          userInput.trim(),
+        );
+
+      if (!parsed.valid) {
+        const clarificationResponse =
+          pendingField === "elective_type"
+            ? "Please specify either Major Elective or General Elective."
+            : "Please provide a valid preference.";
+
+        const completedAssistantMessage =
+          await markMessageCompleted(
+            assistantMessage.id,
+            clarificationResponse,
+          );
+
+        const updatedConversation =
+          await updateConversation(
+            conversation.id,
+            authenticatedUserId,
+            {
+              lastMessagePreview:
+                createMessagePreview(
+                  clarificationResponse,
+                ),
+              lastMessageAt:
+                new Date().toISOString(),
+            },
+          );
+
+        return {
+          conversation:
+            updatedConversation ??
+            conversation,
+          wasCreated,
+          userMessage,
+          assistantMessage:
+            completedAssistantMessage,
+        };
+      }
+
+      const profileUpdate = {};
+
+      if (
+        pendingField ===
+        "elective_type"
+      ) {
+        profileUpdate.electiveType =
+          parsed.value;
+      }
+
+      if (
+        pendingField ===
+        "career_interest"
+      ) {
+        profileUpdate.careerInterest =
+          parsed.value;
+      }
+
+      if (
+        pendingField ===
+        "assessment_preference"
+      ) {
+        profileUpdate.assessmentPreference =
+          parsed.value;
+      }
+
+      workingProfile =
+        await updateAcademicData(
+          authenticatedUserId,
+          profileUpdate,
+        );
+
+      await updateConversation(
+        conversation.id,
+        authenticatedUserId,
+        {
+          pendingIntent: null,
+          pendingField: null,
+        },
+      );
+    }
+
+    const isElectiveFlow =
+      intent === INTENTS.ELECTIVE_SELECTION ||
+      conversation.pending_intent ===
+        INTENTS.ELECTIVE_SELECTION;
+
+    if (isElectiveFlow) {
+      const clarification =
+        getMissingClarification(
+          INTENTS.ELECTIVE_SELECTION,
+          workingProfile,
+        );
+
+      if (clarification) {
+        const updatedConversation =
+          await updateConversation(
+            conversation.id,
+            authenticatedUserId,
+            {
+              pendingIntent:
+                INTENTS.ELECTIVE_SELECTION,
+
+              pendingField:
+                clarification.field,
+
+              lastMessagePreview:
+                createMessagePreview(
+                  clarification.question,
+                ),
+
+              lastMessageAt:
+                new Date().toISOString(),
+            },
+          );
+
+        const completedAssistantMessage =
+          await markMessageCompleted(
+            assistantMessage.id,
+            clarification.question,
+          );
+
+        return {
+          conversation:
+            updatedConversation ??
+            conversation,
+
+          wasCreated,
+          userMessage,
+
+          assistantMessage:
+            completedAssistantMessage,
+        };
+      }
+    }
+
     /*
     * The user is either starting a CGPA request
     * or continuing an existing CGPA clarification.
@@ -398,10 +618,9 @@ async function processUserMessage({
         INTENTS.CGPA
     ) {
       /*
-      * The original CGPA question may be
-      * earlier in the conversation if the
-      * current message is only a clarification
-      * answer such as "123".
+      * If the current message is only a clarification
+      * answer such as "83", find the original CGPA
+      * question from the conversation history.
       */
       const cgpaQuestion =
         conversation.pending_intent ===
@@ -409,8 +628,7 @@ async function processUserMessage({
           ? historyResult.messages
               .filter(
                 message =>
-                  message.role ===
-                  "USER",
+                  message.role === "USER",
               )
               .map(
                 message =>
@@ -435,6 +653,9 @@ async function processUserMessage({
         cgpaAction,
       );
 
+      /*
+      * HIGHEST POSSIBLE CGPA
+      */
       if (
         cgpaAction ===
         CGPA_ACTIONS.HIGHEST_POSSIBLE
@@ -458,66 +679,155 @@ async function processUserMessage({
                   .total_credits_required,
               ),
           });
-          if (result.alreadyAchieved) {
+
+        calculatorContext = `
+    CGPA CALCULATOR RESULT
+
+    Calculation type:
+    Highest Possible Final CGPA
+
+    Current CGPA:
+    ${workingProfile.cgpa}
+
+    Credits earned:
+    ${workingProfile.credits_earned}
+
+    Total credits required:
+    ${workingProfile.total_credits_required}
+
+    Remaining credits:
+    ${result.remainingCredits}
+
+    Highest possible final CGPA:
+    ${result.highestPossibleCgpa}
+
+    Important instructions:
+    - This result was calculated programmatically.
+    - Treat this calculator result as the source of truth.
+    - Assume the maximum future GPA is 4.00.
+    - Do not independently recalculate the result.
+    - Explain the result clearly in plain English.
+    - Do not use LaTeX.
+    `;
+      }
+
+      /*
+      * TARGET CGPA
+      */
+      if (
+        cgpaAction ===
+        CGPA_ACTIONS.TARGET
+      ) {
+        const targetCgpa =
+          extractTargetCgpa(
+            cgpaQuestion,
+          );
+
+        console.log(
+          "TARGET CGPA:",
+          targetCgpa,
+        );
+
+        if (targetCgpa === null) {
+          calculatorContext = `
+    CGPA TARGET INFORMATION MISSING
+
+    The student wants to calculate a target CGPA,
+    but the target CGPA value is not available.
+
+    Ask the student what target CGPA they want to achieve.
+    `;
+        } else {
+          const result =
+            calculateRequiredAverageGpa({
+              currentCgpa:
+                Number(
+                  workingProfile.cgpa,
+                ),
+
+              creditsEarned:
+                Number(
+                  workingProfile
+                    .credits_earned,
+                ),
+
+              totalCreditsRequired:
+                Number(
+                  workingProfile
+                    .total_credits_required,
+                ),
+
+              targetCgpa,
+            });
+
+          /*
+          * Student already has the target CGPA.
+          */
+          if (
+            result.alreadyAchieved
+          ) {
             calculatorContext = `
-          CGPA CALCULATOR RESULT
+    CGPA CALCULATOR RESULT
 
-          Current CGPA:
-          ${workingProfile.cgpa}
+    Calculation type:
+    Target CGPA
 
-          Target CGPA:
-          ${targetCgpa}
+    Current CGPA:
+    ${workingProfile.cgpa}
 
-          The student has already achieved the target CGPA.
+    Target CGPA:
+    ${targetCgpa}
 
-          Important instructions:
+    The student's current CGPA is already equal to
+    or higher than the target CGPA.
 
-          - Congratulate the student.
-          - Do not mention a negative GPA.
-          - Do not recalculate the result.
-          - Do not use LaTeX.
-          `;
+    Important instructions:
+    - Clearly explain that the target has already been achieved.
+    - Do not display a negative required GPA.
+    - Do not independently recalculate the result.
+    - Do not use LaTeX.
+    `;
           } else {
             calculatorContext = `
-          CGPA CALCULATOR RESULT
+    CGPA CALCULATOR RESULT
 
-          Calculation type:
-          Required GPA For Target CGPA
+    Calculation type:
+    Required GPA For Target CGPA
 
-          Current CGPA:
-          ${workingProfile.cgpa}
+    Current CGPA:
+    ${workingProfile.cgpa}
 
-          Target CGPA:
-          ${targetCgpa}
+    Target CGPA:
+    ${targetCgpa}
 
-          Credits earned:
-          ${workingProfile.credits_earned}
+    Credits earned:
+    ${workingProfile.credits_earned}
 
-          Remaining credits:
-          ${result.remainingCredits}
+    Total credits required:
+    ${workingProfile.total_credits_required}
 
-          Required average GPA:
-          ${result.requiredAverageGpa}
+    Remaining credits:
+    ${result.remainingCredits}
 
-          Achievable:
-          ${result.achievable ? "YES" : "NO"}
+    Required average GPA:
+    ${result.requiredAverageGpa}
 
-          Important instructions:
+    Achievable:
+    ${result.achievable ? "YES" : "NO"}
 
-          - This result was calculated programmatically.
-          - Treat this calculator result as the source of truth.
-          - Do not recalculate the CGPA yourself.
-          - Explain the result clearly.
-          - Do not use LaTeX.
-          `;
+    Important instructions:
+    - This result was calculated programmatically.
+    - Treat this calculator result as the source of truth.
+    - Do not independently recalculate the result.
+    - Explain the result clearly in plain English.
+    - If Achievable is NO, clearly explain that the target cannot be reached within the remaining credits under a maximum GPA of 4.00.
+    - Do not use LaTeX.
+    `;
           }
+        }
       }
     }
 
-    /*
-     * Remove the current PROCESSING assistant placeholder.
-     * The current USER message remains in the prompt history.
-     */
     const promptMessages =
       historyResult.messages.filter(
         message =>

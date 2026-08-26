@@ -139,6 +139,75 @@ function classifyIntent(
       .ADMINISTRATION;
   }
 
+  if (
+    includesAny(text, [
+      "elective",
+      "electives",
+      "which elective",
+      "choose elective",
+      "select elective",
+      "which subject should i choose",
+      "which course should i choose",
+    ])
+  ) {
+    return INTENTS.ELECTIVE_SELECTION;
+  }
+
+  if (
+    includesAny(text, [
+      "career",
+      "career path",
+      "job",
+      "jobs",
+      "software engineer",
+      "backend engineer",
+      "ai engineer",
+      "data scientist",
+      "developer",
+      "what career",
+      "what job",
+      "after graduation",
+    ])
+  ) {
+    return INTENTS.CAREER_PLANNING;
+  }
+
+  if (
+    includesAny(text, [
+      "study plan",
+      "study planning",
+      "how should i study",
+      "how to study",
+      "manage my time",
+      "time management",
+      "study schedule",
+      "improve my grades",
+      "improve academically",
+      "study better",
+    ])
+  ) {
+    return INTENTS.STUDY_PLANNING;
+  }
+
+  if (
+    includesAny(text, [
+      "stressed",
+      "stress",
+      "overwhelmed",
+      "burnout",
+      "burned out",
+      "anxious",
+      "worried",
+      "pressure",
+      "can't cope",
+      "cannot cope",
+      "feel exhausted",
+      "feel lost",
+    ])
+  ) {
+    return INTENTS.STUDENT_WELLBEING;
+  }
+
   return INTENTS.GENERAL;
 }
 
