@@ -184,6 +184,11 @@ function classifyIntent(
       "improve my grades",
       "improve academically",
       "study better",
+      "study week",
+      "exam week",
+      "revision plan",
+      "revision schedule",
+      "study time",
     ])
   ) {
     return INTENTS.STUDY_PLANNING;
