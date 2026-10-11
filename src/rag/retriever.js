@@ -1,54 +1,131 @@
-import { generateEmbedding } from "../services/embeddingService.js";
+import {
+  generateEmbedding,
+} from "../services/embeddingService.js";
 
-function normalizeText(text) {
-  return text.toLowerCase().replace(/[^\w\s]/g, " ");
-}
+import {
+  searchKnowledgeChunks,
+} from "../knowledge/knowledgeChunkRepository.js";
 
-function extractKeywords(question) {
-  const stopWords = [
-    "what", "how", "when", "where", "why", "can", "i", "do", "does",
-    "is", "are", "the", "a", "an", "to", "for", "of", "in", "on",
-    "and", "or", "with", "my", "me"
-  ];
 
-  return normalizeText(question)
-    .split(/\s+/)
-    .filter((word) => word.length > 2)
-    .filter((word) => !stopWords.includes(word));
-}
-
-function scoreChunk(chunkText, keywords) {
-  const normalizedChunk = normalizeText(chunkText);
-  let score = 0;
-
-  for (const keyword of keywords) {
-    if (normalizedChunk.includes(keyword)) {
-      score++;
-    }
+export async function retrieveRelevantChunks(
+  question,
+  userRole,
+  topK = 5,
+) {
+  if (
+    typeof question !== "string" ||
+    !question.trim()
+  ) {
+    return [];
   }
 
-  return score;
-}
+  const questionEmbedding =
+    await generateEmbedding(
+      question.trim(),
+    );
 
-function cosineSimilarity(vecA, vecB) {
-  const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+  const chunks =
+    await searchKnowledgeChunks({
+      queryEmbedding:
+        questionEmbedding,
 
-  const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
-  const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+      userRole,
 
-  if (magnitudeA === 0 || magnitudeB === 0) return 0;
+      matchThreshold:
+        0.3,
 
-  return dotProduct / (magnitudeA * magnitudeB);
-}
+      matchCount:
+        topK,
+    });
 
-export async function retrieveRelevantChunks(question, knowledgeBase, topK = 5) {
-  const questionEmbedding = await generateEmbedding(question);
 
-  return knowledgeBase
-    .map((chunk) => ({
-      ...chunk,
-      score: cosineSimilarity(questionEmbedding, chunk.embedding),
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK);
+  // RAG retrieval logging
+  console.log(
+    "\n========================================",
+  );
+  console.log(
+    "RAG RETRIEVAL RESULT",
+  );
+  console.log(
+    "========================================",
+  );
+
+  console.log(
+    `Question: ${question.trim()}`,
+  );
+
+  console.log(
+    `User Role: ${userRole}`,
+  );
+
+  console.log(
+    `Retrieved Chunks: ${chunks.length}`,
+  );
+
+
+  chunks.forEach(
+    (chunk, index) => {
+      const source =
+        chunk.metadata
+          ?.legacySource ??
+        chunk.metadata
+          ?.fileName ??
+        chunk.metadata
+          ?.documentTitle ??
+        "Knowledge Base";
+
+      const chunkId =
+        chunk.metadata
+          ?.legacyChunkId ??
+        chunk.id ??
+        index + 1;
+
+      const similarity =
+        typeof chunk.similarity ===
+        "number"
+          ? chunk.similarity.toFixed(4)
+          : "N/A";
+
+      const content =
+        typeof chunk.content ===
+        "string"
+          ? chunk.content
+              .replace(/\s+/g, " ")
+              .slice(0, 350)
+          : "Not available";
+
+      console.log(
+        `\nChunk ${index + 1}`,
+      );
+
+      console.log(
+        `Chunk ID: ${chunkId}`,
+      );
+
+      console.log(
+        `Database ID: ${
+          chunk.id ?? "N/A"
+        }`,
+      );
+
+      console.log(
+        `Source: ${source}`,
+      );
+
+      console.log(
+        `Similarity: ${similarity}`,
+      );
+
+      console.log(
+        `Content: ${content}`,
+      );
+    },
+  );
+
+
+  console.log(
+    "\n========================================\n",
+  );
+
+  return chunks;
 }
